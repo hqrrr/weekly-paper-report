@@ -77,30 +77,12 @@ jobs:
 
     steps:
       - name: Update README last update time
-        run: |
-          TS=$(date -u +"%Y-%m-%d %H:%M UTC")
-          python - << 'EOF'
-          from pathlib import Path
-          import re
-          
-          p = Path("README.md")
-          text = p.read_text(encoding="utf-8")
-          
-          new = re.sub(
-              r"(<!-- REPORT_UPDATE_START -->).*?(<!-- REPORT_UPDATE_END -->)",
-              r"\\1\n🕒 Last report update: **" + TS + r"**\n\\2",
-              text,
-              flags=re.S
-          )
-          
-          if new != text:
-              p.write_text(new, encoding="utf-8")
-          EOF
+        run: python scripts/update_readme.py
 
-      - name: Commit README update
+      - name: Commit and push changes
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add README.md
-          git diff --cached --quiet || git commit -m "chore: update report timestamp"
+          git commit -m "chore: update README report timestamp" || echo "No changes"
           git push
