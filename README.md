@@ -7,10 +7,22 @@
 > 
 > 🌐 Live demo: https://hqrrr.github.io/weekly-paper-report/
 
+[📘 中文文档](README_CN.md)
+
+## About this tool
+
+**Weekly Paper Report** is an **automated weekly academic paper monitoring and visualization tool**. It automatically retrieves the latest papers from *Crossref* based on keywords and authors of interest (supports ORCID), generating a static HTML report that can be directly published to GitHub Pages.
+
+This tool is ideal for:
+- Tracking the latest literature in specific research areas
+- Monitoring recent publications by particular scholars
+- Quickly grasping the distribution and trends of research topics within a week
+
 ## Overview
 
 <!-- TOC -->
 * [Weekly Paper Report](#weekly-paper-report)
+  * [About this tool](#about-this-tool)
   * [Overview](#overview)
   * [Key features](#key-features)
   * [Demo](#demo)
@@ -54,7 +66,8 @@
 
 ## Demo
 
-An example weekly report is available at: [Weekly Paper Report](https://hqrrr.github.io/weekly-paper-report/)
+An example weekly report is available at:  
+👉 [Weekly Paper Report](https://hqrrr.github.io/weekly-paper-report/)
 
 <!-- REPORT_UPDATE_START -->
 🕒 Last report update: **never**
@@ -152,6 +165,24 @@ In your fork:
 > If your weekly updates stop, simply:
 > - make a small commit (e.g., edit README), and/or
 > - re-enable the workflow in the **Actions** tab.
+
+> **About the update schedule**
+>
+> The update frequency of this report is defined in the GitHub Actions workflow file  
+> (`.github/workflows/update_github_pages.yml`).
+>
+> The workflow is currently scheduled to run once per week at a fixed time (UTC),
+> as defined in the `on: schedule` cron configuration:
+>   ```
+>    # every Monday at 02:00 UTC
+>    # German time: 03:00 in winter / 04:00 in summer
+>    # China time: 10:00
+>    - cron: "0 2 * * 1"
+>   ```
+> 
+> If you would like to change the update frequency or execution time,
+> you can edit the `on: schedule` (cron) section accordingly.
+
 
 [Back to top ↥](#overview)
 
