@@ -7,7 +7,7 @@ on:
     # every Monday at 02:00 UTC
     # German time: 03:00 in winter / 04:00 in summer
     # China time: 10:00
-    - cron: "0 6 * * 1"
+    - cron: "0 2 * * 1"
   workflow_dispatch:
 
 permissions:
