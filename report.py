@@ -19,7 +19,6 @@ TABLE_HEADERS = {
     "container_title": ("Journal / Conference", "期刊 / 会议"),
     "type": ("Type", "类型"),
     "score": ("Relevance Score", "相关性评分"),
-    "doi": ("DOI", "DOI"),
     "created_date": ("Created Date", "创建日期"),
     "followed_author_name": ("Followed Author", "已关注作者"),
     "followed_author_orcid": ("Author ORCID", "作者 ORCID"),
