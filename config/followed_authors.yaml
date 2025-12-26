@@ -10,6 +10,7 @@ followed_authors:
     orcid: "0000-0002-2947-1645"
     names:
       - Shin-ichi Tanabe
+      - S.I Tanabe
 
   - name: Philomena Bluyssen
     orcid: "0000-0002-5732-5362"
@@ -56,3 +57,25 @@ followed_authors:
       - Qirui Huang
       - Q. Huang
 
+  - name: Thomas Parkinson
+    orcid: "0000-0002-0088-8754"
+    names:
+      - Thomas Parkinson
+      - T. Parkinson
+
+  - name: Ana Paula Melo
+    orcid: "0000-0002-0815-7964"
+    names:
+      - Ana Paula Melo
+      - Ana P. Melo
+      - A.P. Melo
+
+  - name: Da Yan
+    orcid: "0000-0003-2399-723X"
+    names:
+      - Da Yan
+
+  - name: Dirk Müller
+    orcid: "0000-0002-6106-6607"
+    names:
+      - Dirk Müller
