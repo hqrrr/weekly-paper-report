@@ -62,6 +62,10 @@ This tool is ideal for:
 
     Outputs a fully self-contained report (`index.html` + assets) that can be hosted on GitHub Pages or shared offline.
 
+- 🆕 **Paper title translation:**
+
+    Paper titles shown in the report are now automatically translated using the DeepL API. Translation is disabled automatically if no API key is provided. A free DeepL API key is available from the [official DeepL website](https://developers.deepl.com/docs/getting-started/intro), with a monthly quota of **50,000 characters**, which is typically sufficient for a weekly paper report.
+
 [Back to top ↥](#overview)
 
 ## Demo
@@ -155,6 +159,16 @@ In your fork:
 2. Create a new **Repository secret**:
    - Name: `WPR_MAILTO`
    - Secret: your email address
+
+### 5) (Optional) Set `TRANSLATION_DEEPL_API_KEY` as a GitHub Actions secret
+
+You may also get a free DeepL API key from [DeepL](https://developers.deepl.com/docs/getting-started/intro) to configure for translating the paper title.
+
+In your fork:
+1. Go to **Settings -> Secrets and variables -> Actions**
+2. Create a new **Repository secret**:
+   - Name: `TRANSLATION_DEEPL_API_KEY`
+   - Secret: your DeepL API key
 
 > **Weekly schedule notes (important)**
 > - The workflow is configured to run on a weekly schedule (via `on: schedule`).
@@ -285,6 +299,7 @@ You can also generate the report locally without GitHub Actions:
     ```
     # .env
     WPR_MAILTO=youremail@example.com
+    TRANSLATION_DEEPL_API_KEY=your.deepl.api.key
     ```
 3. Install dependencies: `pip install -r requirements.txt`
 4. Run the weekly paper report app: `python app.py`
