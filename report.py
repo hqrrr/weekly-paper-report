@@ -11,6 +11,7 @@ import html
 
 import pandas as pd
 
+from translate import DeepLTitleTranslator
 from util import load_followed_authors, i18n
 
 
@@ -300,6 +301,31 @@ def _format_title_for_top_picks(
     return df
 
 
+def _append_zh_span(en_html: str, zh_text: str) -> str:
+    """
+    Append a zh translation in a span, without replacing the English.
+    zh span has lang="zh" so the language toggle can hide/show it.
+    """
+    zh_text = "" if zh_text is None else str(zh_text).strip()
+    if not zh_text:
+        return en_html
+    zh_esc = _escape(zh_text)
+    return f'{en_html}<br/><span class="paper-title-zh" lang="zh">{zh_esc}</span>'
+
+
+def _escape_title_and_optional_zh(en_text: str, zh_text: str | None) -> str:
+    """
+    For tables that previously output raw title text, escape it to keep HTML safe,
+    then append zh span if available.
+    """
+    en_text = "" if en_text is None else str(en_text)
+    en_esc = _escape(en_text)
+    if zh_text is None:
+        return en_esc
+    return _append_zh_span(en_esc, zh_text)
+
+
+
 def report_html(
     df_results: pd.DataFrame,
     df_followed_in_results: pd.DataFrame,
@@ -319,6 +345,9 @@ def report_html(
     assets_subdir: str = "assets",
     keywords: Optional[list[str]] = None,
     followed_authors_path: str = "./config/followed_authors.yaml",
+    translation_auth_key: str = "",
+    translation_source_lang: str = "EN",        # English (all)
+    translation_target_lang: str = "ZH-HANS",   # Chinese (simplified)
 ) -> Path:
     """
     Build a single-page HTML report and save it to <out_dir>/<out_name>.
@@ -366,11 +395,23 @@ def report_html(
         Keywords used in Crossref query.
     followed_authors_path:
         Path to followed_authors.yaml file.
+    translation_auth_key:
+        API key for translation using DeepL.
+    translation_source_lang:
+        Source language for translation. Defaults to "EN": English (all).
+    translation_target_lang:
+        Target language for translation. Defaults to "ZH-HANS": Chinese (simplified).
 
     Returns
     -------
     Path to the generated report HTML.
     """
+    # translation
+    translator = None
+    translation_key = (translation_auth_key or "").strip()
+    if translation_key:
+        translator = DeepLTitleTranslator(translation_key, target_lang=translation_target_lang)
+
     out_dir_p = Path(out_dir)
     _ensure_dir(out_dir_p)
     out_path = out_dir_p / out_name
@@ -433,10 +474,29 @@ def report_html(
             df_top = df_top[cols]
         df_top = df_top.head(max(1, int(top_picks_n)))
 
+        # try to translate paper titles
+        title_raw_col = "__title_raw__"
+        if "title" in df_top.columns:
+            df_top[title_raw_col] = df_top["title"].astype(str)
+            zh_map = {}
+            if translator is not None:
+                zh_map = translator.translate_titles(df_top[title_raw_col].tolist())
+
         # highlight titles for top 10%
         df_top = _format_title_for_top_picks(
             df_top, flag_col="is_top_score", title_col="title"
         )
+
+        # append translated title after the English title
+        if "title" in df_top.columns and title_raw_col in df_top.columns:
+            def _append(row):
+                raw = row.get(title_raw_col, "")
+                zh = (zh_map.get(raw) if isinstance(zh_map, dict) else None) if raw else None
+                return _append_zh_span(row.get("title", ""), zh or "")
+
+            df_top["title"] = df_top.apply(_append, axis=1)
+            df_top = df_top.drop(columns=[title_raw_col])
+
         # remove "is_top_score" columns in the html list
         if "is_top_score" in df_top.columns:
             df_top = df_top.drop(columns=["is_top_score"])
@@ -476,12 +536,31 @@ def report_html(
                 if len(legends) > 0 and legends.iloc[0].strip():
                     label = legends.iloc[0].strip()
 
-            table_df = g2[cols_show] if cols_show else g2
+            table_df = (g2.loc[:, cols_show].copy() if cols_show else g2.copy())
+
+            # translate paper title
+            title_raw_col = "__title_raw__"
+            zh_map = {}
+            if "title" in table_df.columns:
+                table_df[title_raw_col] = table_df["title"].astype(str).str.strip()
+                if translator is not None:
+                    zh_map = translator.translate_titles(table_df[title_raw_col].tolist())
 
             # highlight titles for top 10%
             table_df = _format_title_for_top_picks(
                 table_df, flag_col="is_top_score", title_col="title"
             )
+
+            # append translated title
+            if "title" in table_df.columns and title_raw_col in table_df.columns:
+                def _append(row):
+                    raw = row.get(title_raw_col, "")
+                    zh = zh_map.get(raw, "") if isinstance(zh_map, dict) else None
+                    return _append_zh_span(row.get("title", ""), zh or "")
+
+                table_df["title"] = table_df.apply(_append, axis=1)
+                table_df = table_df.drop(columns=[title_raw_col])
+
             # remove "is_top_score" columns in the html list
             if "is_top_score" in table_df.columns:
                 table_df = table_df.drop(columns=["is_top_score"])
@@ -531,7 +610,19 @@ def report_html(
         df_followed_in_results_disp is not None
         and not df_followed_in_results_disp.empty
     ):
-        df_followed_in_results_disp = df_followed_in_results_disp[cols_followed]
+        df_followed_in_results_disp = df_followed_in_results_disp.loc[:, cols_followed].copy()
+
+        # translate paper title and append to EN title
+        if "title" in df_followed_in_results_disp.columns:
+            titles = df_followed_in_results_disp["title"].astype(str).tolist()
+            zh_map = {}
+            if translator is not None:
+                zh_map = translator.translate_titles(titles)
+
+            df_followed_in_results_disp["title"] = df_followed_in_results_disp["title"].apply(
+                lambda t: _escape_title_and_optional_zh(t, zh_map.get(str(t), None))
+            )
+
         # translate df header
         df_followed_in_results_disp = df_with_i18n_headers(df_followed_in_results_disp)
 
@@ -540,7 +631,19 @@ def report_html(
         df_followed_recent_by_orcid_disp is not None
         and not df_followed_recent_by_orcid_disp.empty
     ):
-        df_followed_recent_by_orcid_disp = df_followed_recent_by_orcid_disp[cols_orcid]
+        df_followed_recent_by_orcid_disp = df_followed_recent_by_orcid_disp.loc[:, cols_orcid].copy()
+
+        # translate paper title and append to EN title
+        if "title" in df_followed_recent_by_orcid_disp.columns:
+            titles = df_followed_recent_by_orcid_disp["title"].astype(str).tolist()
+            zh_map = {}
+            if translator is not None:
+                zh_map = translator.translate_titles(titles)
+
+            df_followed_recent_by_orcid_disp["title"] = df_followed_recent_by_orcid_disp["title"].apply(
+                lambda t: _escape_title_and_optional_zh(t, zh_map.get(str(t), None))
+            )
+
         # translate df header
         df_followed_recent_by_orcid_disp = df_with_i18n_headers(
             df_followed_recent_by_orcid_disp

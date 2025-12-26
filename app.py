@@ -30,12 +30,21 @@ TYPES = ["journal-article", "proceedings-article"]
 load_dotenv()  # reads variables from a .env file for local development
 EMAIL = os.getenv("WPR_MAILTO", "")
 
+# DeepL translation API key & Language
+## Use 'Secrets' in your GitHub repository
+## Settings -> Secrets and variables -> Actions -> New repository secret
+## Add:
+##    Name: TRANSLATION_DEEPL_API_KEY
+##    Secret: your DeepL API key
+TRANSLATION_DEEPL_API_KEY = os.getenv("TRANSLATION_DEEPL_API_KEY", "")
+TRANSLATION_TARGET_LANGUAGE = "ZH-HANS"  # Chinese (simplified)
+
 ## Keywords and Followed Authors
 KEYWORDS_PATH = "./config/keywords.yaml"
 FOLLOWED_AUTHORS_PATH = "./config/followed_authors.yaml"
 
 ## Number of retrievals
-ROWS_KEYWORD_SEARCH = 100  # rows
+ROWS_KEYWORD_SEARCH = 150  # rows
 ROWS_PER_AUTHOR = 20  # rows
 
 ## Search date
@@ -52,10 +61,16 @@ if __name__ == "__main__":
     print(f"::group::Weekly Paper Report Log ({today})")
     print("=== weekly-paper-report ===")
     # Environment check
+    ## Email
     if EMAIL:
         print("WPR_MAILTO loaded OK.")
     else:
         print("WPR_MAILTO not set (mailto will be omitted).")
+    ## DeepL translation API key
+    if TRANSLATION_DEEPL_API_KEY:
+        print("TRANSLATION_DEEPL_API_KEY loaded OK.")
+    else:
+        print("TRANSLATION_DEEPL_API_KEY not set (translation will be deactivated).")
 
     # make sure ./html and ./report exists
     Path("./html").mkdir(parents=True, exist_ok=True)
@@ -133,6 +148,8 @@ if __name__ == "__main__":
         theme=THEME,
         keywords=keywords,
         followed_authors_path=FOLLOWED_AUTHORS_PATH,
+        translation_auth_key=TRANSLATION_DEEPL_API_KEY,
+        translation_target_lang=TRANSLATION_TARGET_LANGUAGE,
     )
 
     print(f"\n=== Report generated at {report_path} ===")

@@ -55,8 +55,16 @@ def clean_df(df: pd.DataFrame) -> pd.DataFrame:
     """
     df = df.copy()
 
+    # basic sanity checks
     df = df[df["title"].notna()]
     df = df[df["author_count"] >= 1]
+
+    # language filter (keep English + unknown)
+    if "language" in df.columns:
+        df = df[
+            df["language"].isna() |
+            df["language"].str.startswith("en", na=False)
+            ]
 
     return df.reset_index(drop=True)
 

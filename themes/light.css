@@ -361,3 +361,10 @@ html[data-lang="zh"] [lang="en"] {
     margin-top: 0.25rem;
     font-size: 0.85em;
 }
+
+/* Translation */
+.paper-title-zh {
+    opacity: 0.8;
+    font-size: 0.95em;
+    font-style: italic;
+}
