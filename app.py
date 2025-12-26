@@ -44,7 +44,7 @@ KEYWORDS_PATH = "./config/keywords.yaml"
 FOLLOWED_AUTHORS_PATH = "./config/followed_authors.yaml"
 
 ## Number of retrievals
-ROWS_KEYWORD_SEARCH = 150  # rows
+ROWS_KEYWORD_SEARCH = 100  # rows
 ROWS_PER_AUTHOR = 20  # rows
 
 ## Search date
@@ -92,8 +92,13 @@ if __name__ == "__main__":
         rows=ROWS_KEYWORD_SEARCH,
         mailto=EMAIL,
     )
+    print(f"\nCrossref raw results: {len(df)} papers")
     # Clean data
     df_cleaned = clean_df(df)
+    print(
+        f"After cleaning: {len(df_cleaned)} papers "
+        f"(removed {len(df) - len(df_cleaned)})"
+    )
     # Mark papers with top 10% Crossref relevance score
     df_cleaned = add_top_score_flag(df_cleaned, frac=0.10, out_col="is_top_score")
 
