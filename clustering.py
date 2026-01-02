@@ -187,22 +187,80 @@ def reduce_svd(
     n_components: int = 100,
     random_state: int = 42,
     l2_normalize: bool = True,
-) -> tuple[np.ndarray, TruncatedSVD]:
+    var_target: float | None = None,    # e.g., 0.85 or 0.9, None means fixed n_components
+    max_components: int = 100,
+) -> tuple[np.ndarray, TruncatedSVD, dict[str, Any]]:
     """
     Reduce sparse TF-IDF to dense low-dimensional vectors via TruncatedSVD.
 
     Recommended for density-based clustering (HDBSCAN) on text.
+
+    If var_target is provided, automatically pick the smallest k such that
+    cumulative explained_variance_ratio_ >= var_target, up to max_components.
+
+    Returns (X_red, svd, meta)
     """
     n_samples, n_features = X_tfidf.shape
-    # ensure valid n_components
-    max_comp = max(2, min(n_components, n_samples - 1, n_features - 1))
-    svd = TruncatedSVD(n_components=max_comp, random_state=random_state)
-    X_red = svd.fit_transform(X_tfidf)
+
+    # Hard upper bound of rank-ish limits
+    hard_max = max(2, min(n_samples - 1, n_features - 1))
+
+    if var_target is None:
+        # fixed components
+        k = max(2, min(n_components, hard_max))
+        svd = TruncatedSVD(n_components=k, random_state=random_state)
+        X_red = svd.fit_transform(X_tfidf)
+        evr = svd.explained_variance_ratio_
+        cum = float(np.cumsum(evr)[-1]) if evr is not None and evr.size else 0.0
+        meta = {
+            "svd_mode": "fixed",
+            "svd_components": int(svd.n_components),
+            "svd_explained_var": cum,
+        }
+    else:
+        # auto mode by explained variance
+        max_k = max(2, min(int(max_components), hard_max))
+        svd0 = TruncatedSVD(n_components=max_k, random_state=random_state)
+        X0 = svd0.fit_transform(X_tfidf)
+
+        evr0 = svd0.explained_variance_ratio_
+        if evr0 is None or evr0.size == 0:
+            # fallback
+            svd = svd0
+            X_red = X0
+            meta = {
+                "svd_mode": "auto",
+                "svd_components": int(svd.n_components),
+                "svd_explained_var": None,
+                "svd_var_target": float(var_target),
+            }
+        else:
+            cum0 = np.cumsum(evr0)
+            k = int(np.searchsorted(cum0, var_target) + 1)
+            k = max(2, min(k, max_k))
+
+            if k < max_k:
+                svd = TruncatedSVD(n_components=k, random_state=random_state)
+                X_red = svd.fit_transform(X_tfidf)
+                evr = svd.explained_variance_ratio_
+                cum = float(np.cumsum(evr)[-1]) if evr is not None and evr.size else float(cum0[k - 1])
+            else:
+                svd = svd0
+                X_red = X0
+                cum = float(cum0[-1])
+
+            meta = {
+                "svd_mode": "auto",
+                "svd_components": int(svd.n_components),
+                "svd_explained_var": float(cum),
+                "svd_var_target": float(var_target),
+                "svd_max_components": int(max_k),
+            }
 
     if l2_normalize:
         X_red = normalize(X_red, norm="l2", axis=1)
 
-    return X_red, svd
+    return X_red, svd, meta
 
 
 # KMeans
@@ -253,6 +311,8 @@ def run_kmeans(
     k_values: Optional[list[int]] = None,
     use_svd: bool = False,
     svd_components: int = 100,
+    svd_var_target: float | None = 0.6,    # None -> fixed svd_components, 0.00-1.00 -> auto
+    svd_max_components: int = 80,
     random_state: int = 42,
     top_n_terms: int = 10,
 ) -> ClusteringResult:
@@ -267,13 +327,15 @@ def run_kmeans(
         k_values = list(range(3, 8))
 
     if use_svd:
-        X_vec, svd = reduce_svd(
+        X_vec, svd, meta_svd2 = reduce_svd(
             X_tfidf,
             n_components=svd_components,
             random_state=random_state,
             l2_normalize=True,
+            var_target=svd_var_target,
+            max_components=svd_max_components,
         )
-        meta_svd: dict[str, Any] = {"use_svd": True, "svd_components": svd.n_components}
+        meta_svd: dict[str, Any] = {"use_svd": True, **meta_svd2}
     else:
         X_vec = X_tfidf.toarray()
         X_vec = normalize(X_vec, norm="l2", axis=1)
@@ -318,6 +380,8 @@ def run_hdbscan(
     allow_single_cluster: bool = False,
     use_svd: bool = True,
     svd_components: int = 100,
+    svd_var_target: float | None = 0.6,    # None -> fixed svd_components, 0.00-1.00 -> auto
+    svd_max_components: int = 80,
     random_state: int = 42,
     top_n_terms: int = 10,
 ) -> ClusteringResult:
@@ -329,13 +393,15 @@ def run_hdbscan(
     This tends to be much more stable than running HDBSCAN directly on sparse TF-IDF.
     """
     if use_svd:
-        X_vec, svd = reduce_svd(
+        X_vec, svd, meta_svd2 = reduce_svd(
             X_tfidf,
             n_components=svd_components,
             random_state=random_state,
             l2_normalize=True,
+            var_target=svd_var_target,
+            max_components=svd_max_components,
         )
-        meta_svd: dict[str, Any] = {"use_svd": True, "svd_components": svd.n_components}
+        meta_svd: dict[str, Any] = {"use_svd": True, **meta_svd2}
     else:
         X_vec = X_tfidf.toarray()
         X_vec = normalize(X_vec, norm="l2", axis=1)
@@ -445,6 +511,9 @@ def run_and_compare(
     hdbscan_allow_single_cluster: bool = False,
     hdbscan_use_svd: bool = True,
     hdbscan_svd_components: int = 100,
+    # SVD
+    svd_var_target: float | None = 0.5, # None -> fixed svd_components, 0.00-1.00 -> auto
+    svd_max_components: int = 80,
     # selection
     max_noise_ratio: float = 0.30,
     silhouette_margin: float = 0.03,
@@ -474,6 +543,8 @@ def run_and_compare(
         k_values=k_values,
         use_svd=kmeans_use_svd,
         svd_components=kmeans_svd_components,
+        svd_var_target=svd_var_target,
+        svd_max_components=svd_max_components,
         random_state=random_state,
         top_n_terms=top_n_terms,
     )
@@ -487,6 +558,8 @@ def run_and_compare(
         allow_single_cluster=hdbscan_allow_single_cluster,
         use_svd=hdbscan_use_svd,
         svd_components=hdbscan_svd_components,
+        svd_var_target=svd_var_target,
+        svd_max_components=svd_max_components,
         random_state=random_state,
         top_n_terms=top_n_terms,
     )

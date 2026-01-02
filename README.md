@@ -211,14 +211,14 @@ This **Weekly Paper Report** tool groups papers into rough "topics" based on the
    3. `ngram_range = (1, 2)` (unigrams + bigrams)
 2. Two clustering methods are tried:
    1. **K-Means**: For each *k* ∈ {3,4,5,6,7}, compute cosine silhouette score. Pick the smallest *k* whose silhouette is within a small margin of the best score (preference for simpler clustering).
-   2. **HDBSCAN**: First reduce TF-IDF with TruncatedSVD (default: 100 components) and L2-normalize vectors. Then run HDBSCAN with min_cluster_size = 5.
+   2. **HDBSCAN**: First reduce TF-IDF with TruncatedSVD and L2-normalize vectors. The number of components is automatically selected based on explained variance (default: retain 50% of variance, `svd_var_target = 0.5`). Then run HDBSCAN with `min_cluster_size = 5`.
 3. For each candidate clustering, compute:
    1. cosine silhouette (computed on non-noise points for HDBSCAN)
    2. number of clusters (excluding noise)
    3. noise ratio (fraction of points labeled `-1`)
    4. min cluster size, max cluster share (to detect overly imbalanced solutions)
 4. Choosing the "best" clustering result. Select the final clustering with a pragmatic rule:
-   1. Reject overly noisy results: if HDBSCAN labels too many points as noise (default `noise_ratio > 0.30`), it won’t be selected.
+   1. Reject overly noisy results: if HDBSCAN labels too many points as noise (default `noise_ratio > 0.40`), it won’t be selected.
    2. Compare cosine silhouette:
       1. HDBSCAN must outperform K-Means by a small margin (default `+0.03`) to win.
       2. Otherwise, default to K-Means (more stable and assigns all papers).

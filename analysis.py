@@ -44,8 +44,11 @@ def cluster_analysis(df: pd.DataFrame, path: str = "./html/clusters.html"):
         hdbscan_min_cluster_size=5,
         hdbscan_use_svd=True,
         hdbscan_svd_components=100,
+        # SVD
+        svd_var_target=0.5, # 50% explained var
+        svd_max_components=80,
         # selection rule
-        max_noise_ratio=0.30,
+        max_noise_ratio=0.40,
         silhouette_margin=0.03,
         random_state=42,
         top_n_terms=4,  # top picks for each cluster

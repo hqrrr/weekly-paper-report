@@ -197,14 +197,14 @@ Crossref 建议在 API 请求中提供联系邮箱。
 2. `ngram_range = (1, 2)`（单词+双词组合）
 3. 尝试两种聚类方法：
    1. **K-Means**：对每个 *k* ∈ {3,4,5,6,7} 计算余弦轮廓得分（cosine silhouette score）。若多个 *k* 的表现相近，则优先选择聚类数量更少的方案，以获得更简洁、稳定的结果。
-   2. **HDBSCAN**：先用 TruncatedSVD（默认100个成分）降维 TF-IDF 向量并进行L2范数归一化，再以min_cluster_size=5运行HDBSCAN。
+   2. **HDBSCAN**：先用 TruncatedSVD 降维 TF-IDF 向量并进行L2范数归一化。SVD的维度数量会根据解释方差自动选择（默认保留 50% 的方差，`svd_var_target = 0.5`）。再以`min_cluster_size=5`运行HDBSCAN。
 4. 对每个候选聚类结果计算：
    1. 余弦轮廓 cosine silhouette score（HDBSCAN需基于非噪声点计算）
    2. 聚类数量（排除噪声点）
    3. 噪声比率（标记为`-1`的点占比）
    4. 最小聚类规模、最大聚类覆盖率（用于检测过度失衡的解）
 5. 选择“最佳”聚类结果。采用实用规则确定最终聚类方案：
-   1. 剔除过度噪声结果：若 HDBSCAN 标记过多点为噪声（默认`noise_ratio > 0.30`），则不予采用。
+   1. 剔除过度噪声结果：若 HDBSCAN 标记过多点为噪声（默认`noise_ratio > 0.40`），则不予采用。
    2. 比较余弦轮廓系数：
          1. HDBSCAN需以微弱优势（默认`+0.03`）胜过 K-Means 方可胜出。
          2. 否则默认采用K均值法（更稳定且能分配所有论文）。
